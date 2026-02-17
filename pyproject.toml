@@ -1,0 +1,77 @@
+[project]
+name = "neural-predictive-control"
+version = "0.0.1.dev0"
+requires-python = ">=3.12"
+readme = "README.md"
+
+dependencies = [
+    "cyipopt>=1.6.1",
+    "ffmpeg-python>=0.2.0",
+    "matplotlib>=3.10.7",
+    "numba>=0.62.1",
+    "numpy>=2.3.4",
+    "plotly>=6.5.0",
+    "ruff",
+    "scikit-learn>=1.7.2",
+    "scipy>=1.16.2",
+    "torch==2.5.1",
+    "torchinfo>=1.8.0",
+    "tqdm>=4.67.1",
+]
+
+
+# Ruff config and rules reference:
+# - https://docs.astral.sh/ruff/configuration/
+# - https://docs.astral.sh/ruff/rules/
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # 'D' -> pydocstyle
+    "D213", # Docstring start on first line.
+    "D203", # No empty line after class signature.
+    "D413", # Disable to favor google's docstring convention.
+    # Ignore all of flake8-fixme: Disable complaining about TODOs' existence.
+    "FIX",
+    # others
+    "COM812", # missing-trailing-comma is redundant when using ruff format.
+    "EM101",  # raw-string-in-exception makes you use variables for no reason.
+    "EM102",  # f-string-in-exception: Doesn't allow f-strings in exceptions.
+    "TRY003", # raise-vanilla-args: Define custom exceptions too often.
+    "TD003",  # allow writing TODOs without having a related issue link.
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+
+[tool.ruff.lint.pep8-naming]
+extend-ignore-names = [
+    # Allow torch import conventions.
+    "T",
+    "F",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+docstring-code-line-length = 79
+
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
+
+
