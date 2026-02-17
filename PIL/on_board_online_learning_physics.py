@@ -107,7 +107,7 @@ def main():
 
     mu_true = 473305.9704232581  # rho = 1.10
 
-    # TODO: check if uncomment this
+    # TODO: CHECK
     # ---------------------------------------------------------------------------
     # # SPIN AXIS
     # # If want the "REAL" spin axis to be aligned with z axis --> put change_spin_axis = None

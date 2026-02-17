@@ -189,7 +189,6 @@ def dynamics_propagator_body_fast(
     )
 
 ############# More general dynamics (no spin along z axis) ########################
-# TODO: TOGLI GLI ARGUMENT NON USATI
 def ROP2BP_dynamics_general(
     t,
     x,
