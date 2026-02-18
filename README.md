@@ -126,7 +126,7 @@ This is done by specifying:
 
 In the **Constants asteroid** section, you can modify the physical parameters of the asteroid.  
 
-- The **true** parameters are used to model the external environment.  
+- The **true** parameters are used to model the real environment.  
 - The **LF** parameters are used to model the onboard spacecraft dynamics when the **Linear** predictive model is selected.  
 
 ---  
