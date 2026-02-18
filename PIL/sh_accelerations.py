@@ -248,8 +248,8 @@ class PhysicsParams(nn.Module):
         omega: float = 0.0,
         mu: float = 1.0,
         a_e: float = 16000.0,
-        tilt_angle_deg: float = 2.0,   # TODO: CAMBIATO QUI
-        azimuth_angle_deg: float = 15.0,    # TODO: CAMBIATO QUI
+        tilt_angle_deg: float = 2.0,
+        azimuth_angle_deg: float = 15.0,
         check: bool = True,
     ):
         super().__init__()
