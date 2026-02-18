@@ -851,8 +851,8 @@ class Optimization:
         units: Units,
         x_ref: np.ndarray,
         net: NeuralNetwork,
-        # gamma_du: float = 0.0,  # --> not used currently
         INFERENCE_TIME: bool,
+        # gamma_du: float = 0.0,  # --> not used currently
     ):
         self.weight = weight
         self.units = units
@@ -864,15 +864,13 @@ class Optimization:
         # Initialisation of the parameters
         self.dev = torch.device(self.net.device)
         self.dtype = torch.float32
-        self.L = 15
+        self.L = 15     # specifico per lo scenario che stiamo considerando
 
         # Weights
-        self.wpos = torch.as_tensor(
-            self.weight.w_pos_vel, dtype=self.dtype, device=self.dev
-        ).view(1, self.L, 1)
-        self.wctl = torch.as_tensor(
-            self.weight.w_control, dtype=self.dtype, device=self.dev
-        ).view(1, self.L, 1)
+        self.wpos = torch.as_tensor(self.weight.w_pos_vel, dtype=self.dtype, device=self.dev).view(
+            1, self.L, 1)
+        self.wctl = torch.as_tensor(self.weight.w_control, dtype=self.dtype, device=self.dev).view(
+            1, self.L, 1)
 
         self.Q = torch.diag(
             torch.tensor(
@@ -893,23 +891,17 @@ class Optimization:
         )
 
         self.q_vec = torch.tensor(
-            [self.weight.Q_pos] * 3 + [self.weight.Q_vel] * 3,
-            device=self.dev,
-            dtype=self.dtype,
+            [self.weight.Q_pos] * 3 + [self.weight.Q_vel] * 3, device=self.dev, dtype=self.dtype
         ).view(1, 1, 6)
-        self.z_vec = torch.tensor(
-            [self.weight.Z_pos] * 3 + [self.weight.Z_vel] * 3,
-            device=self.dev,
-            dtype=self.dtype,
-        )
-        self.r_vec = torch.tensor(
-            [self.weight.R_value] * 3, device=self.dev, dtype=self.dtype
-        ).view(1, 1, 3)
+        self.z_vec = torch.tensor([self.weight.Z_pos]*3 + [self.weight.Z_vel]*3, device=self.dev, dtype=self.dtype)
+        self.r_vec = torch.tensor([self.weight.R_value]*3, device=self.dev, dtype=self.dtype).view(1,1,3)
+
+
 
     def set_x_ref(self):
-        self.xref_t = torch.as_tensor(
-            self.x_ref, dtype=self.dtype, device=self.dev
-        ).view(1, self.L, 6)
+        self.xref_t = torch.as_tensor(self.x_ref, dtype=self.dtype, device=self.dev).view(1, self.L, 6)
+
+
 
     def loss_and_grad(self, x0: np.ndarray, U_vec: np.ndarray, need_grad: bool = True):
         """
@@ -923,7 +915,7 @@ class Optimization:
         """
 
         # Tensors
-        x0_t = torch.from_numpy(x0).to(self.dev).view(1, 6)
+        x0_t = torch.from_numpy(x0).to(self.dev).view(1,6)
         U_t = torch.as_tensor(U_vec, dtype=self.dtype, device=self.dev)
         U_t.requires_grad_(need_grad)
 
@@ -954,7 +946,7 @@ class Optimization:
 
         # Control effort
         U_seq = U_t.view(1, self.L, 3)
-        Ju_rows = (U_seq * U_seq * self.r_vec).sum(dim=2, keepdim=True)
+        Ju_rows = (U_seq*U_seq*self.r_vec).sum(dim=2, keepdim=True)
         Ju = (self.wctl * Ju_rows).sum()
 
         # Control smoothness
@@ -964,7 +956,7 @@ class Optimization:
 
         # Terminal
         x_fin = x_err[:, -1, :].view(6)
-        Jfin = (x_fin * x_fin * self.z_vec).sum()
+        Jfin    = (x_fin*x_fin*self.z_vec).sum()
         # J = Jx + Ju + Jdu + Jfin
         J = Jx + Ju + Jfin
 

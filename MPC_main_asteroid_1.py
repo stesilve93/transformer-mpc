@@ -39,9 +39,9 @@ from linear_modules import linear_matrices, convert_mat_to_adimensional
 SCENARIO = "Neural_Network"
 #SCENARIO = "Linear"
 ENVIRONMENT = "Asteroid_scenario"
-SAVE = False
-VISUALISATION = False
-SIMULATION_TIME = 500  # number of simulation time instants (Δt = 5 minutes)
+SAVE = True
+VISUALISATION = True
+SIMULATION_TIME = 250  # number of simulation time instants (Δt = 5 minutes)
 
 print(torch.__version__)
 print(torch.version.cuda)
@@ -54,7 +54,7 @@ print("Device in uso:", DEVICE)
 # If want the "REAL" spin axis to be aligned with z axis --> put change_spin_axis = None
 change_spin_axis = True   # set this to true if you want to have (in the real enviroment) the spin axis inclined
 
-tilt_deg_nominal = 6.0
+tilt_deg_nominal = 3.0
 az_deg_nominal   = 0.0
 
 spin_axis_direction = np.array(
@@ -74,7 +74,7 @@ def main():
     # -----------------------------------------------------------------------
     # Configuration
     # -----------------------------------------------------------------------
-    model_path = ROOT / "Test" / "net_model" / "online_learning" / "NET_online.pt"       # ONLINE MODEL
+    model_path = SCEN_ROOT / "net_model" / "best_test_model_NET_no_rot_no_relu.pt"
     obj_path_reference = SCEN_ROOT / "dynamics" / "eros_asteroid_model_498.obj"
     obj_path_LF = SCEN_ROOT / "dynamics" / "eros_asteroid_model_95.obj"
     traj_mat = SCEN_ROOT / "reference_trajectories" / "trajectory_reference.mat"
@@ -110,8 +110,10 @@ def main():
     units = Units(LU=36000.0, VU=18.0, CU=0.6)
 
     ####################################################
-    rho_true = rho_true * 0.70
-    Omega_true = Omega_true * 0.95
+    # rho_true = rho_true * 0.70
+    # Omega_true = Omega_true * 0.95
+    rho_true = rho_true * 1
+    Omega_true = Omega_true * 1
     ###################################################
 
     # Constant of the LF model-------------------------------------------------
@@ -296,20 +298,20 @@ def main():
     if SAVE:
         if SCENARIO == "Neural_Network":
             savemat(
-                "evaluation_results/trajectory_followed/traj_followed_net.mat",
+                "Asteroid_scenario/evaluation_results/trajectory_followed/traj_followed_net.mat",
                 {"traj_followed": traj_followed_phys},
             )
             savemat(
-                "evaluation_results/fuel_results/fuel_consumption_net.mat",
+                "Asteroid_scenario/evaluation_results/fuel_results/fuel_consumption_net.mat",
                 {"fuel_consumption_each_instant": controls_hist_phys},
             )
         else:
             savemat(
-                "evaluation_results/trajectory_followed/traj_followed_linear.mat",
+                "Asteroid_scenario/evaluation_results/trajectory_followed/traj_followed_linear.mat",
                 {"traj_followed": traj_followed_phys},
             )
             savemat(
-                "evaluation_results/fuel_results/fuel_consumption_linear.mat",
+                "Asteroid_scenario/evaluation_results/fuel_results/fuel_consumption_linear.mat",
                 {"fuel_consumption_each_instant": controls_hist_phys},
             )
 
@@ -354,6 +356,8 @@ def main():
     axs[2].set_title("Position Error Variance")
 
     plt.tight_layout()
+    if SAVE:
+        plt.savefig("Asteroid_scenario/evaluation_results/performance_plot.png", dpi=300, bbox_inches="tight")
     plt.show()
 
 

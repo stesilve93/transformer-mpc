@@ -14,6 +14,7 @@ dependencies = [
     "ruff",
     "scikit-learn>=1.7.2",
     "scipy>=1.16.2",
+    "seaborn>=0.13.2",
     "torch==2.5.1",
     "torchinfo>=1.8.0",
     "tqdm>=4.67.1",

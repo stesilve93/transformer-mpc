@@ -48,6 +48,13 @@ uv sync
 ```
 ---
 
+#### 4. Git LFS
+To properly download files managed with Git LFS, make sure to run the following command after installing Git LFS:
+
+```bash
+git lfs install
+```
+
 ---
 
 ## Run the Simulation  
@@ -250,7 +257,7 @@ Inside the **Parameters** section, the following variables can be defined:
 - **SOLVE_OPT_TIME** → measures the time required to solve the optimization problem  
 - **ONLINE_TRAINING_TIME** → measures the time required to perform one online learning update step  
 
-> **Note:** in `on_board_online_learning_physics.py`, the physics-based loss term is also incorporated into the online learning process. In the **Physics** section, it is possible to specify parameters related to the online estimation of the asteroid physical properties, as well as the initial values used to start the parameter estimation process.
+> **Note:** in `on_board_online_learning_physics.py`, the physics-based loss term is also incorporated into the online learning process. In the **Physics** section, it is possible to specify parameters related to the online estimation of the asteroid physical properties.
 
 ---
 

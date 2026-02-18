@@ -1,11 +1,17 @@
 from dataclasses import dataclass
 import numpy as np
 import torch
+import sys
 import cyipopt
 import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
 from scipy.io import loadmat
 import time
+from pathlib import Path
+
+current_dir = Path(__file__).resolve().parent
+parent_dir = current_dir.parent
+sys.path.append(str(parent_dir))
 
 from Asteroid_scenario.dynamics.polyhedron_model import (
     extract_unique_edges,
@@ -264,15 +270,13 @@ class Optimization:
         # Initialisation of the parameters
         self.dev = torch.device(self.net.device)
         self.dtype = torch.float32
-        self.L = 15
+        self.L = 15     # specifico per lo scenario che stiamo considerando
 
         # Weights
-        self.wpos = torch.as_tensor(
-            self.weight.w_pos_vel, dtype=self.dtype, device=self.dev
-        ).view(1, self.L, 1)
-        self.wctl = torch.as_tensor(
-            self.weight.w_control, dtype=self.dtype, device=self.dev
-        ).view(1, self.L, 1)
+        self.wpos = torch.as_tensor(self.weight.w_pos_vel, dtype=self.dtype, device=self.dev).view(
+            1, self.L, 1)
+        self.wctl = torch.as_tensor(self.weight.w_control, dtype=self.dtype, device=self.dev).view(
+            1, self.L, 1)
 
         self.Q = torch.diag(
             torch.tensor(
@@ -293,23 +297,80 @@ class Optimization:
         )
 
         self.q_vec = torch.tensor(
-            [self.weight.Q_pos] * 3 + [self.weight.Q_vel] * 3,
-            device=self.dev,
-            dtype=self.dtype,
+            [self.weight.Q_pos] * 3 + [self.weight.Q_vel] * 3, device=self.dev, dtype=self.dtype
         ).view(1, 1, 6)
-        self.z_vec = torch.tensor(
-            [self.weight.Z_pos] * 3 + [self.weight.Z_vel] * 3,
-            device=self.dev,
-            dtype=self.dtype,
-        )
-        self.r_vec = torch.tensor(
-            [self.weight.R_value] * 3, device=self.dev, dtype=self.dtype
-        ).view(1, 1, 3)
+        self.z_vec = torch.tensor([self.weight.Z_pos]*3 + [self.weight.Z_vel]*3, device=self.dev, dtype=self.dtype)
+        self.r_vec = torch.tensor([self.weight.R_value]*3, device=self.dev, dtype=self.dtype).view(1,1,3)
 
     def set_x_ref(self):
-        self.xref_t = torch.as_tensor(
-            self.x_ref, dtype=self.dtype, device=self.dev
-        ).view(1, self.L, 6)
+        self.xref_t = torch.as_tensor(self.x_ref, dtype=self.dtype, device=self.dev).view(1, self.L, 6)
+
+
+
+    def loss_and_grad(self, x0: np.ndarray, U_vec: np.ndarray, need_grad: bool = True):
+        """
+        Computes the total cost J and its gradient with respect to the control sequence.
+        The cost includes:
+            • State tracking term (position/velocity error weighted by Q)
+            • Control effort term (control magnitude weighted by R)
+            • Control smoothness term (Δu penalization weighted by gamma_du) --> not considered currently
+            • Terminal state deviation term (final error weighted by Z)
+        If need_grad=True, gradients are computed using PyTorch autograd.
+        """
+
+        # Tensors
+        #x0_t = torch.from_numpy(x0).to(self.dev).view(1,6)
+        x0_t = torch.as_tensor(x0, dtype=self.dtype, device=self.dev).view(1, 6)
+        U_t = torch.as_tensor(U_vec, dtype=self.dtype, device=self.dev)
+        U_t.requires_grad_(need_grad)
+
+        xref_t = self.xref_t
+
+        # Prediction
+        if not need_grad:
+            with torch.inference_mode():
+                if INFERENCE_TIME == True:
+                    if self.dev.type == "cuda":
+                        torch.cuda.synchronize()
+                    t0 = time.perf_counter()
+                    pred = self.net.predict_for_grad(x0_t, U_t)  # (1,L,6) x1...xL
+                    if self.dev.type == "cuda":
+                        torch.cuda.synchronize()
+                    t1 = time.perf_counter()
+                    infer_times_ms.append(1e3 * (t1 - t0))
+                else:
+                    pred = self.net.predict_for_grad(x0_t, U_t)  # (1,L,6) x1...xL
+        else:
+            pred = self.net.predict_for_grad(x0_t, U_t)  # (1,L,6) x1...xL
+        x_err = xref_t - pred
+
+        # Being the matrices diagonal we can write the matrices-vector in this way
+        # Tracking
+        Jx_rows = (x_err * x_err * self.q_vec).sum(dim=2, keepdim=True)  # (1,L,1)
+        Jx = (self.wpos * Jx_rows).sum()
+
+        # Control effort
+        U_seq = U_t.view(1, self.L, 3)
+        Ju_rows = (U_seq*U_seq*self.r_vec).sum(dim=2, keepdim=True)
+        Ju = (self.wctl * Ju_rows).sum()
+
+        # Control smoothness
+        # U_pad = torch.cat([U_seq[:, 0:1, :], U_seq], dim=1)
+        # dU = U_pad[:, 1:, :] - U_pad[:, :-1, :]
+        # Jdu = self.gamma_du * ((dU @ R) * dU).sum()
+
+        # Terminal
+        x_fin = x_err[:, -1, :].view(6)
+        Jfin    = (x_fin*x_fin*self.z_vec).sum()
+        # J = Jx + Ju + Jdu + Jfin
+        J = Jx + Ju + Jfin
+
+        if need_grad:
+            J.backward()
+            grad = U_t.grad.detach().cpu().numpy().astype(np.float64)
+        else:
+            grad = np.zeros_like(U_vec, dtype=np.float64)
+        return float(J.item()), grad  # Tuple[float, np.ndarray]
 
 
 class IpoptProblem:
@@ -612,7 +673,8 @@ class MPC:
                 break
 
             print("Iteration: ", k)
-
+            # print("x_k: ", x_k)
+            # print("U_gues: ", U_guess)
             U_seq, U_opt = self.algorithm.run(x_k, k, U_guess)
             U_guess = U_seq
 

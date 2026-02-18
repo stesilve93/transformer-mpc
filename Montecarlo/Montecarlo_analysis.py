@@ -44,7 +44,7 @@ from dynamics.polyhedron_model import model_opening
 # ---------------------------------------------------------------------------
 # Montecarlo
 # ---------------------------------------------------------------------------
-NUMBER_OF_SIMULATIONS = 5
+NUMBER_OF_SIMULATIONS = 1000
 SEED = 42
 DIST = "uniform"
 
@@ -90,10 +90,13 @@ change_spin_axis = True
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print("Device in uso:", DEVICE)
 
-ROOT = Path(__file__).resolve().parent.parent
-SCEN_ROOT = ROOT / ENVIRONMENT
+# ROOT = Path(__file__).resolve().parent.parent
+# SCEN_ROOT = ROOT / ENVIRONMENT
+# print(SCEN_ROOT)
 
-
+ROOT = Path(__file__).resolve().parent
+SCEN_ROOT = ROOT
+print(SCEN_ROOT)
 
 def main():
 

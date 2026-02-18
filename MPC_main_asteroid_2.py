@@ -41,7 +41,7 @@ SCENARIO = "Neural_Network"
 ENVIRONMENT = "Asteroid_scenario_2"
 VISUALISATION = True
 SAVE = True
-SIMULATION_TIME = 1000  # number of simulation time instants (Δt = 1 minutes)
+SIMULATION_TIME = 100  # number of simulation time instants (Δt = 1 minutes)
 
 # ---------------------------------------------------------------------------
 # SPIN AXIS
@@ -300,20 +300,20 @@ def main():
     if SAVE:
         if SCENARIO == "Neural_Network":
             savemat(
-                "evaluation_results_2/trajectory_followed/traj_followed_net.mat",
+                "Asteroid_scenario_2/evaluation_results/trajectory_followed/traj_followed_net.mat",
                 {"traj_followed": traj_followed_phys},
             )
             savemat(
-                "evaluation_results_2/fuel_results/fuel_consumption_net.mat",
+                "Asteroid_scenario_2/evaluation_results/fuel_results/fuel_consumption_net.mat",
                 {"fuel_consumption_each_instant": controls_hist_phys},
             )
         else:
             savemat(
-                "evaluation_results_2/trajectory_followed/traj_followed_linear.mat",
+                "Asteroid_scenario_2/evaluation_results/trajectory_followed/traj_followed_linear.mat",
                 {"traj_followed": traj_followed_phys},
             )
             savemat(
-                "evaluation_results_2/fuel_results/fuel_consumption_linear.mat",
+                "Asteroid_scenario_2/evaluation_results/fuel_results/fuel_consumption_linear.mat",
                 {"fuel_consumption_each_instant": controls_hist_phys},
             )
 
@@ -353,6 +353,8 @@ def main():
     axs[2].set_title("Position Error Variance")
 
     plt.tight_layout()
+    if SAVE:
+        plt.savefig("Asteroid_scenario_2/evaluation_results/performance_plot.png", dpi=300, bbox_inches="tight")
     plt.show()
 
 

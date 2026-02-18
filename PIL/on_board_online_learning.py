@@ -39,7 +39,7 @@ FAST_BUT_REP = False
 # ---------------------------------------------------------------------------
 HOST = "127.0.0.1"
 #HOST = "0.0.0.0"
-PORT = 5019
+PORT = 5027
 DTYPE = np.float64
 N_STATE = 6
 #PRINT_LEVEL = 3
@@ -47,7 +47,7 @@ N_STATE = 6
 # ---------------------------------------------------------------------------
 #  Parameters
 # ---------------------------------------------------------------------------
-SIMULATION_TIME = 3500      # Has to be the same of the "environment" code
+SIMULATION_TIME = 100      # Has to be the same of the "environment" code
 EARLY_STOPPING = True
 PATIENCE = 100
 NS = 16
@@ -89,22 +89,22 @@ def main():
 
 
     # ---------------------------------------------------------------------------
-    # SPIN AXIS
-    # If want the "REAL" spin axis to be aligned with z axis --> put change_spin_axis = None
-    change_spin_axis = True   # set this to true if you want to have (in the real enviroment) the spin axis inclined
-
-    tilt_deg_nominal = 3.0
-    az_deg_nominal   = 0.0
-
-    spin_axis_direction = np.array(
-        [
-            np.sin(np.deg2rad(tilt_deg_nominal)) * np.cos(np.deg2rad(az_deg_nominal)),
-            np.sin(np.deg2rad(tilt_deg_nominal)) * np.sin(np.deg2rad(az_deg_nominal)),
-            np.cos(np.deg2rad(tilt_deg_nominal)),
-            ]
-    )
-
-    Omega_true = spin_axis_direction * Omega_true
+    # # SPIN AXIS
+    # # If want the "REAL" spin axis to be aligned with z axis --> put change_spin_axis = None
+    # change_spin_axis = True   # set this to true if you want to have (in the real enviroment) the spin axis inclined
+    #
+    # tilt_deg_nominal = 3.0
+    # az_deg_nominal   = 0.0
+    #
+    # spin_axis_direction = np.array(
+    #     [
+    #         np.sin(np.deg2rad(tilt_deg_nominal)) * np.cos(np.deg2rad(az_deg_nominal)),
+    #         np.sin(np.deg2rad(tilt_deg_nominal)) * np.sin(np.deg2rad(az_deg_nominal)),
+    #         np.cos(np.deg2rad(tilt_deg_nominal)),
+    #         ]
+    # )
+    #
+    # Omega_true = spin_axis_direction * Omega_true
     #-------------------------------------------------------------------------------
 
     # ----------------------------------------

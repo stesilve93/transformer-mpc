@@ -4,9 +4,14 @@ import importlib
 from scipy.io import savemat
 from pathlib import Path
 import torch
+import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+current_dir = Path(__file__).resolve().parent
+parent_dir = current_dir.parent
+sys.path.append(str(parent_dir))
 
 from Asteroid_scenario.dynamics.polyhedron_model import (
     extract_unique_edges,

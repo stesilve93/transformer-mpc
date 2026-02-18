@@ -652,6 +652,17 @@ class Visualizer3D:
             self.writer.finish()
             print(f"Video saved in: {self.video_out}")
 
+    def reset(self):
+        self.ax.cla()
+        self.ax.set_title("MPC Tracking")
+        self.ax.set_xlabel("x [m]")
+        self.ax.set_ylabel("y [m]")
+        self.ax.set_zlabel("z [m]")
+        self.ax.set_box_aspect([1, 1, 1])
+        self.line_ref_win = None
+        self.line_net = None
+        self.scatter_sat = None
+
 
 # ---------------------------------------------------------------------------
 #  MPC main class

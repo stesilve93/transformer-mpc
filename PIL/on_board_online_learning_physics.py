@@ -46,7 +46,7 @@ FAST_BUT_REP = False
 # ---------------------------------------------------------------------------
 HOST = "127.0.0.1"
 #HOST = "0.0.0.0"
-PORT = 5023
+PORT = 5027
 DTYPE = np.float64
 N_STATE = 6
 
@@ -70,7 +70,7 @@ PRINT_LEVEL = 0
 START_INSTANT_TRAINING_PHYSICS = 20       # time step in which the estimation of the asteroid physical parameters starts
 ONLINE_UPDATE_EVERY_STEPS_PHYSICS = 8     # number of time steps between two consecutive updates of the parameter estimation process
 
-# Starting values of the physical parameters in the estimation process
+#  Values of the real physical parameters (REMEMBER TO ALIGN THEM WITH THE ENVIRONMENT CODE)
 MU_REFERENCE = 245829.45401648662
 OMEGA_REFERENCE = 0.000301044457317428
 TILT_REFERENCE = 12
@@ -107,7 +107,7 @@ def main():
 
     mu_true = 473305.9704232581  # rho = 1.10
 
-    # TODO: CHECK
+
     # ---------------------------------------------------------------------------
     # # SPIN AXIS
     # # If want the "REAL" spin axis to be aligned with z axis --> put change_spin_axis = None

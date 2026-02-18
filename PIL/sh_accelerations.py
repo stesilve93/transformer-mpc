@@ -118,11 +118,11 @@ def assoc_legendre_all_m_unnorm_batch(x: torch.Tensor, N: int):
 
 def sh_gravity_accel_cart_phi_torch_batch(
     pos: torch.Tensor,
-    # mu: torch.Tensor,
-    # a_e: torch.Tensor,
-    # C: torch.Tensor,
-    # S: torch.Tensor,
-    # N: int,
+    mu: torch.Tensor,
+    a_e: torch.Tensor,
+    C: torch.Tensor,
+    S: torch.Tensor,
+    N: int,
 ):
     """
       pos : (B,3) [m] in the body frame
@@ -146,7 +146,7 @@ def sh_gravity_accel_cart_phi_torch_batch(
     z = pos[:, 2]
 
     r = torch.sqrt(x * x + y * y + z * z)
-    r = torch.clamp(r, min=A_E + 1e-3)
+    r = torch.clamp(r, min=a_e + 1e-3)
 
     lam = torch.atan2(y, x)
     rho_xy = torch.hypot(x, y)
@@ -154,10 +154,10 @@ def sh_gravity_accel_cart_phi_torch_batch(
     sphi = torch.sin(phi)
     cphi = torch.cos(phi)
 
-    q = A_E / r  # shape (B,)
+    q = a_e / r  # shape (B,)
 
     # cos(mλ), sin(mλ) per m=0..N  -> shape (B, N+1)
-    mvals = torch.arange(N_global + 1, dtype=dtype, device=device)  # (N+1,)
+    mvals = torch.arange(N + 1, dtype=dtype, device=device)  # (N+1,)
     lam_mat = lam.unsqueeze(1) * mvals.unsqueeze(0)  # (B,N+1)
 
     cosml = torch.cos(lam_mat)
@@ -166,18 +166,18 @@ def sh_gravity_accel_cart_phi_torch_batch(
     # P_l^m(x_leg) con x_leg = sin φ  -> (B, N+1, N+1)
     x_leg = sphi
     x_leg = torch.clamp(x_leg, -1.0 + 1e-7, 1.0 - 1e-7)
-    P = assoc_legendre_all_m_unnorm_batch(x_leg, N_global)
+    P = assoc_legendre_all_m_unnorm_batch(x_leg, N)
 
     # Sums (B,)
     ar_sum = torch.zeros(B, dtype=dtype, device=device)
     aphi_sum = torch.zeros(B, dtype=dtype, device=device)
     alam_sum = torch.zeros(B, dtype=dtype, device=device)
 
-    for l in range(0, N_global + 1):
+    for l in range(0, N + 1):
         q_l = q**l  # (B,)
         for m in range(0, l + 1):
             P_lm = P[:, l, m]  # (B,)
-            T = C_non_norm[l, m] * cosml[:, m] + S_non_norm[l, m] * sinml[:, m]  # (B,)
+            T = C[l, m] * cosml[:, m] + S[l, m] * sinml[:, m]  # (B,)
 
             # radial
             ar_sum = ar_sum + (l + 1) * q_l * P_lm * T
@@ -203,13 +203,13 @@ def sh_gravity_accel_cart_phi_torch_batch(
 
                 if m >= 1:
                     alam_sum = alam_sum + q_l * m * P_lm * (
-                        -C_non_norm[l, m] * sinml[:, m] + S_non_norm[l, m] * cosml[:, m]
+                        -C[l, m] * sinml[:, m] + S[l, m] * cosml[:, m]
                     )
 
     eps = torch.tensor(1e-15, dtype=dtype, device=device)
-    a_r = -MU_LR / (r * r) * ar_sum
-    a_phi = MU_LR / (r * r) * aphi_sum
-    a_lam = MU_LR / (r * r) * (alam_sum / torch.maximum(eps, cphi))
+    a_r = -mu / (r * r) * ar_sum
+    a_phi = mu / (r * r) * aphi_sum
+    a_lam = mu / (r * r) * (alam_sum / torch.maximum(eps, cphi))
 
     cos_lam = torch.cos(lam)
     sin_lam = torch.sin(lam)
@@ -225,19 +225,19 @@ def sh_gravity_accel_cart_phi_torch_batch(
 
 class PhysicsParams(nn.Module):
     """
-    Learnable physical parameters + spherical coefficients:
-      - omega, mu, a_e: learnable
-      - C, S: matrices up to degree N; only selected elements are learnable, others remain fixed.
+    Learnable:
+      - omega
+      - mu
+      - tilt_angle_deg in [0, 90]
+      - azimuth_angle_deg in [0, 360]
 
-    Args:
-      - N (int): maximum expansion degree
-      - C (torch.Tensor): initial non-normalized C coefficients, shape (N+1, N+1)
-      - S (torch.Tensor): initial non-normalized S coefficients, shape (N+1, N+1)
-      - omega (float): initial omega value
-      - mu (float): initial mu value
-      - a_e (float): initial reference radius (m)
-      - learnable_keys (list[tuple]): list of entries to be learnable
-      - check (bool): if True, performs consistency checks
+    Fixed (buffers):
+      - a_e
+      - C_base, S_base (spherical harmonic coefficients up to degree N, non-learnable)
+
+    Conventions:
+      - tilt: angle from +Z (0 = aligned with +Z), degrees
+      - azimuth: angle in XY plane from +X toward +Y, degrees
     """
 
     def __init__(
@@ -245,107 +245,106 @@ class PhysicsParams(nn.Module):
         N: int = 2,
         C: torch.Tensor = C_non_norm,
         S: torch.Tensor = S_non_norm,
-        omega: float = Omega_LR,
-        mu: float = MU_LR,
+        omega: float = 0.0,
+        mu: float = 1.0,
         a_e: float = 16000.0,
-        learnable_keys=None,
+        tilt_angle_deg: float = 2.0,   # TODO: CAMBIATO QUI
+        azimuth_angle_deg: float = 15.0,    # TODO: CAMBIATO QUI
         check: bool = True,
     ):
         super().__init__()
         self.N = int(N)
 
+        # ---- Fixed C/S (buffers) ----
+        if C is None or S is None:
+            raise ValueError("You must pass initial C and S tensors with shape (N+1, N+1).")
+
         C = torch.as_tensor(C, dtype=torch.float32)
         S = torch.as_tensor(S, dtype=torch.float32)
 
-        if C is None or S is None:
-            raise ValueError(
-                "You must pass the initial C and S tensors (shape (N+1, N+1))."
-            )
-
-        if C.shape != (N + 1, N + 1) or S.shape != (N + 1, N + 1):
-            raise ValueError(
-                f"Expected C/S shapes: {(N + 1, N + 1)}, got: {C.shape} / {S.shape}"
-            )
+        if check:
+            if C.shape != (N + 1, N + 1) or S.shape != (N + 1, N + 1):
+                raise ValueError(
+                    f"Expected C/S shapes {(N+1, N+1)}, got {tuple(C.shape)} / {tuple(S.shape)}"
+                )
 
         C_base = C.detach().clone()
         S_base = S.detach().clone()
-        C_base[0, 0] = 1.0
+        C_base[0, 0] = 1.0  # fixed by definition
 
         self.register_buffer("C_base", C_base)
         self.register_buffer("S_base", S_base)
 
-        self.omega_raw = nn.Parameter(torch.tensor(omega))
-        self.mu_raw = nn.Parameter(torch.tensor(float(mu)))
-        self.a_e_raw = nn.Parameter(torch.tensor(float(a_e)))
+        # ---- Fixed a_e (buffer) ----
+        self.register_buffer("a_e", torch.tensor(float(a_e), dtype=torch.float32))
 
-        # list of learnable keys for C/S
-        if learnable_keys is None:
-            learnable_keys = [
-                (1, 0, "C"),
-                (1, 1, "C"),
-                (1, 1, "S"),
-                (2, 0, "C"),
-                (2, 1, "C"),
-                (2, 2, "C"),
-                (2, 1, "S"),
-                (2, 2, "S"),
-            ]
-        self.learnable_keys = list(learnable_keys)
+        # ---- Learnable scalars ----
+        self.omega_raw = nn.Parameter(torch.tensor(float(omega), dtype=torch.float32))
+        self.mu_raw    = nn.Parameter(torch.tensor(float(mu), dtype=torch.float32))
 
-        # Some checks are performed:
-        if check:
-            for l, m, which in self.learnable_keys:
-                if not (0 <= l <= self.N and 0 <= m <= l):
-                    raise ValueError(f"Learnable key out of range: (l={l}, m={m}).")
-                if which not in ("C", "S"):
-                    raise ValueError(f'"which" must be "C" or "S", got: {which}')
-                if l == 0 and m == 0:
-                    raise ValueError(
-                        "C[0,0] is fixed by definition; do not set it as learnable."
-                    )
+        # ---- Learnable angles (stored raw, mapped to ranges) ----
+        self.tilt_raw = nn.Parameter(torch.tensor(
+            float(self._inv_sigmoid(tilt_angle_deg / 90.0)), dtype=torch.float32
+        ))
+        self.azim_raw = nn.Parameter(torch.tensor(
+            float(self._inv_sigmoid(azimuth_angle_deg / 360.0)), dtype=torch.float32
+        ))
 
-        # Initialize learnable C/S parameters with the provided initial values
-        params = []
-        for l, m, which in self.learnable_keys:
-            # Take initial values from the provided C and S matrices and make them trainable parameters
-            init_val = (self.C_base[l, m] if which == "C" else self.S_base[l, m]).item()
-            params.append(nn.Parameter(torch.tensor(float(init_val))))
-        self.learnable_params = nn.ParameterList(params)
+    # --------------------
+    # Utils
+    # --------------------
+    @staticmethod
+    def _inv_sigmoid(x, eps=1e-6):
+        """
+        Inverse sigmoid, safe for x in (0,1).
+        Used to initialize raw parameters from constrained physical values.
+        """
+        x = torch.tensor(float(x))
+        x = torch.clamp(x, eps, 1.0 - eps)
+        return torch.log(x / (1.0 - x))
 
+    # --------------------
+    # Learnable parameters
+    # --------------------
     @property
     def omega(self):
-        return self.omega_raw
+        return self.omega_vector()
 
     @property
     def mu(self):
         return self.mu_raw
 
     @property
-    def a_e(self):
-        return self.a_e_raw
+    def tilt_angle_deg(self):
+        """Tilt in degrees, constrained to [0, 90]."""
+        return 90.0 * torch.sigmoid(self.tilt_raw)
 
+    @property
+    def azimuth_angle_deg(self):
+        """Azimuth in degrees, constrained to [0, 360]."""
+        return 360.0 * torch.sigmoid(self.azim_raw)
+
+    # --------------------
+    # Fixed C/S interface
+    # --------------------
     def get_CS(self):
-        """
-        Returns the final C, S:
-          - starts from C_base/S_base (fixed)
-          - overwrites ONLY the indices in learnable_keys with the corresponding learnable parameters
-        """
-        C = self.C_base.clone()
-        S = self.S_base.clone()
+        """Return fixed (non-learnable) coefficients."""
+        return self.C_base, self.S_base
 
-        for p, (l, m, which) in zip(self.learnable_params, self.learnable_keys):
-            if which == "C":
-                C[l, m] = p
-            else:
-                S[l, m] = p
-        return C, S
+    # --------------------
+    # Spin axis helpers
+    # --------------------
+    def spin_axis_unit(self):
+        """Unit spin axis vector using tilt/azimuth (degrees)."""
+        tilt_rad = torch.deg2rad(self.tilt_angle_deg)
+        az_rad   = torch.deg2rad(self.azimuth_angle_deg)
 
-    def forward(self, pos_batch):
-        """
-        Computes accelerations using spherical expansion
-        """
-        C, S = self.get_CS()
-        return sh_gravity_accel_cart_phi_torch_batch(
-            pos_batch, self.mu, self.a_e, C, S, self.N
-        )
+        sx = torch.sin(tilt_rad) * torch.cos(az_rad)
+        sy = torch.sin(tilt_rad) * torch.sin(az_rad)
+        sz = torch.cos(tilt_rad)
+        return torch.stack([sx, sy, sz], dim=0)
+
+    def omega_vector(self):
+        """Angular velocity vector Ω = omega * u_hat."""
+        return self.omega_raw * self.spin_axis_unit()
 
