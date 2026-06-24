@@ -266,6 +266,6 @@ This repository contains the implementation of the Transformer-based Neural Pred
 the following paper and is released to support the reproducibility of the published results.
 
 > T. Cesarini and S. Silvestrini,
-> *Transformer-Based Neural Predictive Control for Small-Body Proximity Operations*, 2025.
+> *Transformer-Based Neural Predictive Control for Small-Body Proximity Operations*, IEEE World Congress on Computational Intelligence, 2025.
 
 
