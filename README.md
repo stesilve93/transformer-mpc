@@ -260,6 +260,12 @@ Inside the **Parameters** section, the following variables can be defined:
 > **Note:** in `on_board_online_learning_physics.py`, the physics-based loss term is also incorporated into the online learning process. In the **Physics** section, it is possible to specify parameters related to the online estimation of the asteroid physical properties.
 
 ---
+## Associated Publication
 
+This repository contains the implementation of the Transformer-based Neural Predictive Control framework presented in
+the following paper and is released to support the reproducibility of the published results.
+
+> T. Cesarini and S. Silvestrini,
+> *Transformer-Based Neural Predictive Control for Small-Body Proximity Operations*, 2025.
 
 
